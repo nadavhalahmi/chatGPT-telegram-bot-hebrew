@@ -118,12 +118,15 @@ def get_last_message():
         response = response.replace("<code\>", "`")
         response = response.replace("</code\>", "`")
     else:
-        response = escape_markdown(prose.inner_text(), version=2)
-    # Translate the response from English to Hebrew
-    translated_response = GoogleTranslator(source='auto', target='iw').translate(
-        response)
+        # response = escape_markdown(prose.inner_text(), version=2)
+        response = prose.inner_text()
+        # Translate the response from English to Hebrew
+        translated_response = GoogleTranslator(source='auto', target='iw').translate(
+            response)
+        translated_response = escape_markdown(translated_response, version=2)
+        return translated_response
 
-    return translated_response
+    return response
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
