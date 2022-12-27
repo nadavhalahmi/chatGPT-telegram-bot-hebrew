@@ -1,4 +1,5 @@
 """Make some requests to OpenAI's chatbot"""
+from deep_translator import GoogleTranslator
 from telegram.helpers import escape, escape_markdown
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 from telegram import ForceReply, Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -77,10 +78,13 @@ def is_logged_in():
 
 
 def send_message(message):
-    # Send the message
+    # Translate the message to English
+    translated_message = GoogleTranslator(source='auto', target='en').translate(
+        message)
+    # Send the translated message
     box = get_input_box()
     box.click()
-    box.fill(message)
+    box.fill(translated_message)
     box.press("Enter")
 
 
@@ -114,7 +118,14 @@ def get_last_message():
         response = response.replace("<code\>", "`")
         response = response.replace("</code\>", "`")
     else:
-        response = escape_markdown(prose.inner_text(), version=2)
+        # response = escape_markdown(prose.inner_text(), version=2)
+        response = prose.inner_text()
+        # Translate the response from English to Hebrew
+        translated_response = GoogleTranslator(source='auto', target='iw').translate(
+            response)
+        translated_response = escape_markdown(translated_response, version=2)
+        return translated_response
+
     return response
 
 
