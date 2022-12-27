@@ -1,4 +1,8 @@
 """Make some requests to OpenAI's chatbot"""
+from telegram.helpers import escape, escape_markdown
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram import ForceReply, Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import __version__ as TG_VER
 import json
 import time
 import os
@@ -19,7 +23,6 @@ from functools import wraps
 nest_asyncio.apply()
 dotenv.load_dotenv()
 
-from telegram import __version__ as TG_VER
 
 try:
     from telegram import __version_info__
@@ -32,14 +35,8 @@ if __version_info__ < (20, 0, 0, "alpha", 1):
         f"{TG_VER} version of this example, "
         f"visit https://docs.python-telegram-bot.org/en/v{TG_VER}/examples.html"
     )
-from telegram import ForceReply, Update, InlineKeyboardButton, InlineKeyboardMarkup
 
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
-
-from telegram.helpers import escape, escape_markdown
-
-if os.environ.get('TELEGRAM_USER_ID'):
-    USER_ID = int(os.environ.get('TELEGRAM_USER_ID'))
+OPEN_AI_EMAIL, OPEN_AI_PASSWORD = None, None
 
 if os.environ.get('OPEN_AI_EMAIL'):
     OPEN_AI_EMAIL = os.environ.get('OPEN_AI_EMAIL')
@@ -65,15 +62,19 @@ stealth_sync(PAGE)
 
 """Start the bot."""
 # Create the Application and pass it your bot's token.
-application = Application.builder().token(os.environ.get('TELEGRAM_API_KEY')).build()
+application = Application.builder().token(
+    os.environ.get('TELEGRAM_API_KEY')).build()
+
 
 def get_input_box():
     """Get the child textarea of `PromptTextarea__TextareaWrapper`"""
     return PAGE.query_selector("textarea")
 
+
 def is_logged_in():
     # See if we have a textarea with data-id="root"
     return get_input_box() is not None
+
 
 def send_message(message):
     # Send the message
@@ -107,7 +108,7 @@ def get_last_message():
                 code_container = child.query_selector("code")
                 response += f"\n```\n{escape_markdown(code_container.inner_text(), version=2)}\n```"
             else:
-                #replace all <code>x</code> things with `x`
+                # replace all <code>x</code> things with `x`
                 text = child.inner_html()
                 response += escape_markdown(text, version=2)
         response = response.replace("<code\>", "`")
@@ -116,19 +117,7 @@ def get_last_message():
         response = escape_markdown(prose.inner_text(), version=2)
     return response
 
-# create a decorator called auth that receives USER_ID as an argument with wraps
-def auth(user_id):
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(update, context):
-            if update.effective_user.id == user_id:
-                await func(update, context)
-            else:
-                await update.message.reply_text("You are not authorized to use this bot")
-        return wrapper
-    return decorator
 
-@auth(USER_ID)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     user = update.effective_user
@@ -137,12 +126,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_markup=ForceReply(selective=True),
     )
 
-@auth(USER_ID)
+
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
     await update.message.reply_text("Help!")
 
-@auth(USER_ID)
+
 async def reload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
     print(f"Got a reload command from user {update.effective_user.id}")
@@ -150,9 +139,10 @@ async def reload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text("Reloaded the browser!")
     await update.message.reply_text("Let's check if it's workin!")
 
-@auth(USER_ID)
+
 async def draw(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    print(f"Got a draw command from user {update.effective_user.id} with prompt {update.message.text}")
+    print(
+        f"Got a draw command from user {update.effective_user.id} with prompt {update.message.text}")
 
     send_message(f"""
 You a large language model trained by OpenAi. You can be used from different applications. 
@@ -203,9 +193,8 @@ async def respond_with_image(update, response):
                                      parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
 
 
-@auth(USER_ID)
 async def browse(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    message = update.message.text.replace('/browse','')
+    message = update.message.text.replace('/browse', '')
     await application.bot.send_chat_action(update.effective_chat.id, "typing")
     # answer a quick prompt to chatGPT to ask for google search prompt
     send_message(f"""
@@ -235,7 +224,7 @@ I want you to only reply with the output inside and nothing else. Do no write ex
     else:
         await update.message.reply_text(response, parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
 
-@auth(USER_ID)
+
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Echo the user message."""
     # Send the message to OpenAI
@@ -247,12 +236,13 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     else:
         await update.message.reply_text(response, parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
 
+
 async def check_loading(update):
-    #button has an svg of submit, if it's not there, it's likely that the three dots are showing an animation
+    # button has an svg of submit, if it's not there, it's likely that the three dots are showing an animation
     submit_button = PAGE.query_selector_all("textarea+button")[0]
     # with a timeout of 90 seconds, created a while loop that checks if loading is done
     loading = submit_button.query_selector_all(".text-2xl")
-    #keep checking len(loading) until it's empty or 45 seconds have passed
+    # keep checking len(loading) until it's empty or 45 seconds have passed
     await application.bot.send_chat_action(update.effective_chat.id, "typing")
     start_time = time.time()
     while len(loading) > 0:
@@ -268,7 +258,7 @@ def start_browser():
     if not is_logged_in():
         print("Please log in to OpenAI Chat")
         print("Press enter when you're done")
-        
+
         PAGE.locator("button", has_text="Log in").click()
 
         username = PAGE.locator('input[name="username"]')
@@ -278,7 +268,7 @@ def start_browser():
         password = PAGE.locator('input[name="password"]')
         password.fill(OPEN_AI_PASSWORD)
         password.press("Enter")
-        
+
         # On first login
         try:
             next_button = PAGE.locator("button", has_text="Next")
@@ -298,10 +288,12 @@ def start_browser():
     application.add_handler(CommandHandler("browse", browse))
 
     # on non command i.e message - echo the message on Telegram
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+    application.add_handler(MessageHandler(
+        filters.TEXT & ~filters.COMMAND, echo))
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling()
+
 
 if __name__ == "__main__":
     start_browser()
