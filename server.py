@@ -257,9 +257,9 @@ async def check_loading(update):
     await application.bot.send_chat_action(update.effective_chat.id, "typing")
     start_time = time.time()
     while len(loading) > 0:
-        if time.time() - start_time > 90:
+        if time.time() - start_time > 180:
             break
-        time.sleep(0.5)
+        time.sleep(2)
         loading = submit_button.query_selector_all(".text-2xl")
         await application.bot.send_chat_action(update.effective_chat.id, "typing")
 
